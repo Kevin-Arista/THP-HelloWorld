@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 type Screenshot = {
 	id: number;
@@ -25,9 +27,15 @@ export default function Home() {
 	const [rows, setRows] = useState<Screenshot[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [user, setUser] = useState<User | null>(null);
+	const router = useRouter();
+	const supabase = createClient();
 
 	useEffect(() => {
-		async function fetchData() {
+		async function init() {
+			const { data: { user } } = await supabase.auth.getUser();
+			setUser(user);
+
 			const { data, error } = await supabase
 				.from("screenshots")
 				.select(
@@ -56,12 +64,44 @@ export default function Home() {
 			setLoading(false);
 		}
 
-		fetchData();
-	}, []);
+		init();
+	}, [supabase]);
+
+	async function handleSignOut() {
+		await supabase.auth.signOut();
+		router.push("/login");
+	}
 
 	return (
 		<main style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
-			<h1 style={{ marginBottom: "1.5rem" }}>Screenshots with Public Images</h1>
+			<div
+				style={{
+					display: "flex",
+					justifyContent: "space-between",
+					alignItems: "center",
+					marginBottom: "1.5rem",
+				}}>
+				<h1 style={{ margin: 0 }}>Screenshots with Public Images</h1>
+				{user && (
+					<div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+						<span style={{ fontSize: "0.9rem", color: "#555" }}>
+							{user.email}
+						</span>
+						<button
+							onClick={handleSignOut}
+							style={{
+								padding: "0.5rem 1rem",
+								fontSize: "0.9rem",
+								backgroundColor: "#e5e5e5",
+								border: "none",
+								borderRadius: "6px",
+								cursor: "pointer",
+							}}>
+							Sign Out
+						</button>
+					</div>
+				)}
+			</div>
 
 			{loading && <p>Loading...</p>}
 			{error && <p style={{ color: "red" }}>Error: {error}</p>}
