@@ -1,158 +1,208 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
-
-type Screenshot = {
-	id: number;
-	created_datetime_utc: string;
-	caption_id: string;
-	profile_id: string;
-	captions: {
-		id: string;
-		content: string;
-		created_datetime_utc: string;
-		image_id: string;
-		images: {
-			id: string;
-			url: string;
-			image_description: string | null;
-		};
-	};
-};
+import Link from "next/link";
 
 export default function Home() {
-	const [rows, setRows] = useState<Screenshot[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-	const [user, setUser] = useState<User | null>(null);
-	const router = useRouter();
-	const supabase = createClient();
-
-	useEffect(() => {
-		async function init() {
-			const { data: { user } } = await supabase.auth.getUser();
-			setUser(user);
-
-			const { data, error } = await supabase
-				.from("screenshots")
-				.select(
-					`
-					*,
-					captions!inner (
-						id,
-						content,
-						created_datetime_utc,
-						image_id,
-						images!inner (
-							id,
-							url,
-							image_description
-						)
-					)
-				`,
-				)
-				.eq("captions.images.is_public", true);
-
-			if (error) {
-				setError(error.message);
-			} else {
-				setRows(data || []);
-			}
-			setLoading(false);
-		}
-
-		init();
-	}, [supabase]);
-
-	async function handleSignOut() {
-		await supabase.auth.signOut();
-		router.push("/login");
-	}
-
 	return (
-		<main style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
+		<main
+			style={{
+				minHeight: "calc(100vh - 56px)",
+				display: "flex",
+				flexDirection: "column",
+				alignItems: "center",
+				justifyContent: "center",
+				fontFamily: "system-ui, sans-serif",
+				padding: "2rem",
+			}}>
+			{/* Hero */}
+			<h1
+				style={{
+					fontSize: "3.5rem",
+					fontWeight: 800,
+					color: "#f0f0ff",
+					textShadow:
+						"0 0 7px rgba(78,205,196,0.6), 0 0 30px rgba(78,205,196,0.3)",
+					marginBottom: "0.5rem",
+					textAlign: "center",
+				}}>
+				MemeVote
+			</h1>
+			<p
+				style={{
+					fontSize: "0.95rem",
+					color: "#8888aa",
+					marginBottom: "0.25rem",
+					textAlign: "center",
+					letterSpacing: "0.05em",
+				}}>
+				Powered by{" "}
+				<span
+					style={{
+						color: "#4ecdc4",
+						fontWeight: 600,
+						textShadow: "0 0 6px rgba(78,205,196,0.4)",
+					}}>
+					Cracked AI
+				</span>
+			</p>
+			<p
+				style={{
+					fontSize: "1.25rem",
+					color: "#8888aa",
+					marginBottom: "3rem",
+					textAlign: "center",
+				}}>
+				Swipe. Vote. Laugh.
+			</p>
+
+			{/* Decorative phone frame */}
 			<div
 				style={{
+					width: "260px",
+					height: "420px",
+					background: "#16213e",
+					borderRadius: "36px",
+					border: "3px solid #2a2a4a",
+					boxShadow:
+						"0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 40px rgba(78,205,196,0.08)",
 					display: "flex",
-					justifyContent: "space-between",
+					flexDirection: "column",
 					alignItems: "center",
-					marginBottom: "1.5rem",
+					overflow: "hidden",
+					marginBottom: "3rem",
+					position: "relative",
 				}}>
-				<h1 style={{ margin: 0 }}>Screenshots with Public Images</h1>
-				{user && (
-					<div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-						<span style={{ fontSize: "0.9rem", color: "#555" }}>
-							{user.email}
-						</span>
-						<button
-							onClick={handleSignOut}
-							style={{
-								padding: "0.5rem 1rem",
-								fontSize: "0.9rem",
-								backgroundColor: "#e5e5e5",
-								border: "none",
-								borderRadius: "6px",
-								cursor: "pointer",
-							}}>
-							Sign Out
-						</button>
-					</div>
-				)}
-			</div>
-
-			{loading && <p>Loading...</p>}
-			{error && <p style={{ color: "red" }}>Error: {error}</p>}
-
-			{!loading && !error && (
+				{/* Notch */}
 				<div
 					style={{
-						display: "grid",
-						gap: "1.5rem",
-						maxWidth: "500px",
-						margin: "0 auto",
+						width: "90px",
+						height: "24px",
+						background: "#1a1a2e",
+						borderRadius: "0 0 14px 14px",
+					}}
+				/>
+
+				{/* Placeholder content inside phone */}
+				<div
+					style={{
+						flex: 1,
+						display: "flex",
+						flexDirection: "column",
+						alignItems: "center",
+						justifyContent: "center",
+						gap: "1rem",
+						padding: "1.5rem",
 					}}>
-					{rows.map((row) => (
-						<div
-							key={row.id}
+					<div
+						style={{
+							width: "180px",
+							height: "140px",
+							background: "#1a1a2e",
+							borderRadius: "12px",
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							fontSize: "2.5rem",
+						}}>
+						😂
+					</div>
+					<div
+						style={{
+							width: "160px",
+							height: "12px",
+							background: "#2a2a4a",
+							borderRadius: "6px",
+						}}
+					/>
+					<div
+						style={{
+							width: "120px",
+							height: "12px",
+							background: "#2a2a4a",
+							borderRadius: "6px",
+						}}
+					/>
+					<div
+						style={{
+							display: "flex",
+							gap: "2rem",
+							marginTop: "0.5rem",
+						}}>
+						<span
 							style={{
-								background: "#fff",
-								borderRadius: "12px",
-								boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-								overflow: "hidden",
+								width: "44px",
+								height: "44px",
+								borderRadius: "50%",
+								border: "2px solid #3a3a5a",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								fontSize: "1.1rem",
+								color: "#ff6b6b",
 							}}>
-							<img
-								src={row.captions.images.url}
-								alt={row.captions.images.image_description || "Screenshot"}
-								style={{
-									width: "100%",
-									display: "block",
-								}}
-							/>
-							<div style={{ padding: "1rem" }}>
-								<p
-									style={{
-										margin: 0,
-										fontSize: "1rem",
-										lineHeight: 1.4,
-									}}>
-									{row.captions.content}
-								</p>
-								<p
-									style={{
-										margin: "0.75rem 0 0",
-										fontSize: "0.8rem",
-										color: "#888",
-									}}>
-									{new Date(row.captions.created_datetime_utc).toLocaleString()}
-								</p>
-							</div>
-						</div>
-					))}
+							&#x2717;
+						</span>
+						<span
+							style={{
+								width: "44px",
+								height: "44px",
+								borderRadius: "50%",
+								border: "2px solid #3a3a5a",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								fontSize: "1.1rem",
+								color: "#4ecdc4",
+							}}>
+							&#x2713;
+						</span>
+					</div>
 				</div>
-			)}
+
+				{/* Home indicator */}
+				<div
+					style={{
+						width: "90px",
+						height: "4px",
+						background: "#3a3a5a",
+						borderRadius: "2px",
+						marginBottom: "8px",
+					}}
+				/>
+			</div>
+
+			{/* CTA Buttons */}
+			<div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", justifyContent: "center" }}>
+				<Link
+					href="/vote"
+					style={{
+						padding: "0.85rem 2rem",
+						fontSize: "1.05rem",
+						fontWeight: 600,
+						color: "#1a1a2e",
+						background: "#4ecdc4",
+						borderRadius: "10px",
+						textDecoration: "none",
+						boxShadow:
+							"0 0 15px rgba(78,205,196,0.4), 0 0 45px rgba(78,205,196,0.2)",
+						transition: "transform 0.15s, box-shadow 0.15s",
+					}}>
+					Start Voting
+				</Link>
+				<Link
+					href="/showcase"
+					style={{
+						padding: "0.85rem 2rem",
+						fontSize: "1.05rem",
+						fontWeight: 600,
+						color: "#f0f0ff",
+						background: "transparent",
+						border: "1px solid #4ecdc4",
+						borderRadius: "10px",
+						textDecoration: "none",
+						transition: "background 0.15s",
+					}}>
+					View Showcase
+				</Link>
+			</div>
 		</main>
 	);
 }

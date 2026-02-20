@@ -37,6 +37,7 @@ export async function middleware(request: NextRequest) {
 
 	if (
 		!user &&
+		pathname !== "/" &&
 		pathname !== "/login" &&
 		!pathname.startsWith("/auth/")
 	) {
