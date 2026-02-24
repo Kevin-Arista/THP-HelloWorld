@@ -9,6 +9,7 @@ import type { User } from "@supabase/supabase-js";
 const navLinks = [
 	{ href: "/showcase", label: "Showcase" },
 	{ href: "/vote", label: "Vote" },
+	{ href: "/upload", label: "Upload" },
 ];
 
 export default function Navbar() {
