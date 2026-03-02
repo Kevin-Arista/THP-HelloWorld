@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -18,6 +19,7 @@ type Caption = {
 };
 
 export default function VotePage() {
+	const router = useRouter();
 	const [captions, setCaptions] = useState<Caption[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -31,6 +33,12 @@ export default function VotePage() {
 			const {
 				data: { user },
 			} = await supabase.auth.getUser();
+
+			if (!user) {
+				router.replace("/login");
+				return;
+			}
+
 			setUser(user);
 
 			const { data, error } = await supabase
@@ -49,7 +57,7 @@ export default function VotePage() {
 					)
 				`,
 				)
-				.eq("images.is_public", true)
+
 				.not("content", "is", null)
 				.order("created_datetime_utc", { ascending: false });
 

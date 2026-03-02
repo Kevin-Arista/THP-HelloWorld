@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -36,6 +37,7 @@ const STAGE_LABELS: Partial<Record<Stage, string>> = {
 };
 
 export default function UploadPage() {
+	const router = useRouter();
 	const supabase = createClient();
 	const [user, setUser] = useState<User | null>(null);
 	const [authChecked, setAuthChecked] = useState(false);
@@ -52,10 +54,14 @@ export default function UploadPage() {
 
 	useEffect(() => {
 		supabase.auth.getUser().then(({ data: { user } }) => {
+			if (!user) {
+				router.replace("/login");
+				return;
+			}
 			setUser(user);
 			setAuthChecked(true);
 		});
-	}, [supabase]);
+	}, [supabase, router]);
 
 	// Cleanup object URL on unmount
 	useEffect(() => {

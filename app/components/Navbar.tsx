@@ -7,9 +7,9 @@ import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
 const navLinks = [
-	{ href: "/showcase", label: "Showcase" },
 	{ href: "/vote", label: "Vote" },
 	{ href: "/upload", label: "Upload" },
+	{ href: "/about", label: "About" },
 ];
 
 export default function Navbar() {
@@ -22,11 +22,10 @@ export default function Navbar() {
 		supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
 	}, [supabase]);
 
-	if (pathname === "/login") return null;
-
 	async function handleSignOut() {
 		await supabase.auth.signOut();
-		router.push("/login");
+		setUser(null);
+		router.push("/");
 	}
 
 	return (

@@ -25,7 +25,7 @@ function LoginForm() {
 				flexDirection: "column",
 				alignItems: "center",
 				justifyContent: "center",
-				minHeight: "100vh",
+				minHeight: "calc(100vh - 56px)",
 				fontFamily: "system-ui, sans-serif",
 			}}>
 			<h1
