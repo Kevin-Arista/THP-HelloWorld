@@ -107,7 +107,8 @@ export default function VotePage() {
 				profile_id: user.id,
 				caption_id: caption.id,
 				vote_value: voteValue,
-				created_datetime_utc: new Date().toISOString(),
+				created_by_user_id: user.id,
+				modified_by_user_id: user.id,
 			});
 
 			if (!error) {
