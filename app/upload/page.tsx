@@ -30,78 +30,52 @@ const ACCEPTED_TYPES = [
 	"image/heic",
 ];
 const STAGE_LABELS: Partial<Record<Stage, string>> = {
-	presigning: "Getting upload URL...",
-	uploading: "Uploading image...",
-	registering: "Registering image...",
-	captioning: "Generating captions...",
+	presigning:  "GETTING UPLOAD URL…",
+	uploading:   "UPLOADING IMAGE…",
+	registering: "REGISTERING IMAGE…",
+	captioning:  "GENERATING CAPTIONS…",
 };
 
 export default function UploadPage() {
-	const router = useRouter();
+	const router   = useRouter();
 	const supabase = createClient();
-	const [user, setUser] = useState<User | null>(null);
+	const [user, setUser]           = useState<User | null>(null);
 	const [authChecked, setAuthChecked] = useState(false);
-	const [file, setFile] = useState<File | null>(null);
-	const [preview, setPreview] = useState<string | null>(null);
-	const [stage, setStage] = useState<Stage>("idle");
-	const [errorMsg, setErrorMsg] = useState<string | null>(null);
-	const [captions, setCaptions] = useState<CaptionRecord[]>([]);
-	const [cdnUrl, setCdnUrl] = useState<string | null>(null);
-	const [copied, setCopied] = useState(false);
+	const [file, setFile]           = useState<File | null>(null);
+	const [preview, setPreview]     = useState<string | null>(null);
+	const [stage, setStage]         = useState<Stage>("idle");
+	const [errorMsg, setErrorMsg]   = useState<string | null>(null);
+	const [captions, setCaptions]   = useState<CaptionRecord[]>([]);
+	const [cdnUrl, setCdnUrl]       = useState<string | null>(null);
 	const previewUrlRef = useRef<string | null>(null);
 
 	const isProcessing = ["presigning", "uploading", "registering", "captioning"].includes(stage);
 
 	useEffect(() => {
 		supabase.auth.getUser().then(({ data: { user } }) => {
-			if (!user) {
-				router.replace("/login");
-				return;
-			}
+			if (!user) { router.replace("/login"); return; }
 			setUser(user);
 			setAuthChecked(true);
 		});
 	}, [supabase, router]);
 
-	// Cleanup object URL on unmount
 	useEffect(() => {
-		return () => {
-			if (previewUrlRef.current) {
-				URL.revokeObjectURL(previewUrlRef.current);
-			}
-		};
+		return () => { if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current); };
 	}, []);
 
 	function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
 		const selected = e.target.files?.[0] ?? null;
-		// Revoke previous preview URL
-		if (previewUrlRef.current) {
-			URL.revokeObjectURL(previewUrlRef.current);
-			previewUrlRef.current = null;
-		}
-		setErrorMsg(null);
-		setStage("idle");
-		setCaptions([]);
-		setCdnUrl(null);
-		setCopied(false);
+		if (previewUrlRef.current) { URL.revokeObjectURL(previewUrlRef.current); previewUrlRef.current = null; }
+		setErrorMsg(null); setStage("idle"); setCaptions([]); setCdnUrl(null);
 
-		if (!selected) {
-			setFile(null);
-			setPreview(null);
-			return;
-		}
+		if (!selected) { setFile(null); setPreview(null); return; }
 
-		const isHeic =
-			selected.type === "image/heic" ||
-			selected.name.toLowerCase().endsWith(".heic");
+		const isHeic    = selected.type === "image/heic" || selected.name.toLowerCase().endsWith(".heic");
 		const validType = ACCEPTED_TYPES.includes(selected.type) || isHeic;
 
 		if (!validType) {
-			setFile(null);
-			setPreview(null);
-			setErrorMsg(
-				`Unsupported file type. Please upload a JPEG, PNG, WebP, GIF, or HEIC image.`,
-			);
+			setFile(null); setPreview(null);
+			setErrorMsg("Unsupported file type. Please upload a JPEG, PNG, WebP, GIF, or HEIC image.");
 			setStage("error");
 			return;
 		}
@@ -118,96 +92,66 @@ export default function UploadPage() {
 		try {
 			const { data: sessionData } = await supabase.auth.getSession();
 			const token = sessionData.session?.access_token;
-
-			if (!token) {
-				setErrorMsg("Session expired, please sign in again.");
-				setStage("error");
-				return;
-			}
+			if (!token) { setErrorMsg("Session expired, please sign in again."); setStage("error"); return; }
 
 			const authHeaders = {
 				Authorization: `Bearer ${token}`,
 				"Content-Type": "application/json",
 			};
 
-			// Step 1: Get presigned URL
+			// Step 1: Presign
 			setStage("presigning");
 			const presignRes = await fetch(`${BASE_URL}/pipeline/generate-presigned-url`, {
-				method: "POST",
-				headers: authHeaders,
+				method: "POST", headers: authHeaders,
 				body: JSON.stringify({ contentType: file.type }),
 			});
-			if (!presignRes.ok) {
-				const text = await presignRes.text();
-				throw new Error(`Failed to get upload URL: ${text}`);
-			}
+			if (!presignRes.ok) throw new Error(`Failed to get upload URL: ${await presignRes.text()}`);
 			const { presignedUrl, cdnUrl: fetchedCdnUrl } = await presignRes.json();
 			setCdnUrl(fetchedCdnUrl);
 
-			// Step 2: Upload to S3
+			// Step 2: Upload
 			setStage("uploading");
 			const uploadRes = await fetch(presignedUrl, {
-				method: "PUT",
-				headers: { "Content-Type": file.type },
-				body: file,
+				method: "PUT", headers: { "Content-Type": file.type }, body: file,
 			});
-			if (!uploadRes.ok) {
-				throw new Error(`Upload failed with status ${uploadRes.status}`);
-			}
+			if (!uploadRes.ok) throw new Error(`Upload failed with status ${uploadRes.status}`);
 
-			// Step 3: Register image
+			// Step 3: Register
 			setStage("registering");
 			const registerRes = await fetch(`${BASE_URL}/pipeline/upload-image-from-url`, {
-				method: "POST",
-				headers: authHeaders,
+				method: "POST", headers: authHeaders,
 				body: JSON.stringify({ imageUrl: fetchedCdnUrl, isCommonUse: false }),
 			});
-			if (!registerRes.ok) {
-				const text = await registerRes.text();
-				throw new Error(`Failed to register image: ${text}`);
-			}
+			if (!registerRes.ok) throw new Error(`Failed to register image: ${await registerRes.text()}`);
 			const { imageId } = await registerRes.json();
 
 			// Step 4: Generate captions
 			setStage("captioning");
 			const captionRes = await fetch(`${BASE_URL}/pipeline/generate-captions`, {
-				method: "POST",
-				headers: authHeaders,
-				body: JSON.stringify({ imageId }),
+				method: "POST", headers: authHeaders,
+				body: JSON.stringify({ imageId, humorFlavorId: 377 }),
 			});
-			if (!captionRes.ok) {
-				const text = await captionRes.text();
-				throw new Error(`Failed to generate captions: ${text}`);
-			}
+			if (!captionRes.ok) throw new Error(`Failed to generate captions: ${await captionRes.text()}`);
 			const result: CaptionRecord[] = await captionRes.json();
 
 			setCaptions(result);
 			setStage("success");
 		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			setErrorMsg(message);
+			setErrorMsg(err instanceof Error ? err.message : String(err));
 			setStage("error");
 		}
 	}
 
 	function handleReset() {
-		if (previewUrlRef.current) {
-			URL.revokeObjectURL(previewUrlRef.current);
-			previewUrlRef.current = null;
-		}
-		setFile(null);
-		setPreview(null);
-		setStage("idle");
-		setErrorMsg(null);
-		setCaptions([]);
-		setCdnUrl(null);
-		setCopied(false);
+		if (previewUrlRef.current) { URL.revokeObjectURL(previewUrlRef.current); previewUrlRef.current = null; }
+		setFile(null); setPreview(null); setStage("idle");
+		setErrorMsg(null); setCaptions([]); setCdnUrl(null);
 	}
 
 	if (!authChecked) {
 		return (
 			<main style={pageStyle}>
-				<p style={{ color: "#8888aa", marginTop: "4rem" }}>Loading...</p>
+				<p style={{ color: "#2e6070", marginTop: "4rem", letterSpacing: "0.1em" }}>LOADING…</p>
 			</main>
 		);
 	}
@@ -215,85 +159,147 @@ export default function UploadPage() {
 	if (!user) {
 		return (
 			<main style={pageStyle}>
-				<p style={{ color: "#8888aa", marginTop: "4rem" }}>
+				<p style={{ color: "#2e6070", marginTop: "4rem", letterSpacing: "0.08em" }}>
 					Please sign in to upload images.
 				</p>
 			</main>
 		);
 	}
 
-	async function handleCopy() {
-		if (!cdnUrl) return;
-		await navigator.clipboard.writeText(cdnUrl);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
-	}
-
 	return (
 		<main style={pageStyle}>
-		<style>{`
-			@keyframes loadingSweep {
-				0%   { transform: translateX(-100%); }
-				100% { transform: translateX(550%); }
-			}
-		`}</style>
-			{/* Hero / instructions */}
+			<style>{`
+				@keyframes loadingSweep {
+					0%   { transform: translateX(-100%); }
+					100% { transform: translateX(550%); }
+				}
+			`}</style>
+
+			{/* Hero */}
 			<div style={heroStyle}>
-				<h1 style={{ margin: "0 0 0.5rem", fontSize: "2rem", fontWeight: 800, color: "#f0f0ff", letterSpacing: "-0.5px" }}>
-					Generate Captions for Your Meme
+				<h1
+					style={{
+						margin: "0 0 0.5rem",
+						fontSize: "1.8rem",
+						fontWeight: 800,
+						color: "#00f0ff",
+						letterSpacing: "0.18em",
+						animation: "textGlowPulse 4s ease-in-out infinite",
+					}}>
+					GENERATE CAPTIONS
 				</h1>
-				<p style={{ margin: 0, color: "#8888aa", fontSize: "1rem", maxWidth: "520px", lineHeight: 1.6 }}>
-					Upload any image and our AI will generate a set of witty captions for it.
-					Your image will be stored in our CDN so you can share or use the link anywhere.
+				<p
+					style={{
+						margin: 0,
+						color: "#2e6070",
+						fontSize: "0.82rem",
+						maxWidth: "480px",
+						lineHeight: 1.8,
+						letterSpacing: "0.05em",
+					}}>
+					Upload an image and our AI will generate a set of witty captions for it.
 				</p>
 
 				{/* Step pills */}
 				<div style={stepsRowStyle}>
 					{[
-						{ n: "1", label: "Pick an image" },
-						{ n: "2", label: "Click Generate" },
-						{ n: "3", label: "Get your captions" },
+						{ n: "1", label: "PICK AN IMAGE" },
+						{ n: "2", label: "CLICK GENERATE" },
+						{ n: "3", label: "GET CAPTIONS" },
 					].map((s) => (
 						<div key={s.n} style={stepPillStyle}>
 							<span style={stepNumStyle}>{s.n}</span>
-							<span style={{ color: "#c0c0e0", fontSize: "0.85rem" }}>{s.label}</span>
+							<span style={{ color: "#2e6070", fontSize: "0.75rem", letterSpacing: "0.08em" }}>
+								{s.label}
+							</span>
 						</div>
 					))}
 				</div>
 			</div>
 
+			{/* Card */}
 			<div style={cardStyle}>
 				{stage === "success" ? (
 					<div>
-						{/* Uploaded image preview */}
+						{/* Success header */}
+						<div
+							style={{
+								textAlign: "center",
+								marginBottom: "1.5rem",
+								paddingBottom: "1.25rem",
+								borderBottom: "1px solid rgba(0,240,255,0.12)",
+							}}>
+							<div
+								style={{
+									fontSize: "1.6rem",
+									color: "#00f0ff",
+									marginBottom: "0.3rem",
+									textShadow: "0 0 12px rgba(0,240,255,0.7)",
+									animation: "textGlowPulse 3s ease-in-out infinite",
+								}}>
+								✓
+							</div>
+							<h2
+								style={{
+									margin: 0,
+									fontSize: "1rem",
+									fontWeight: 700,
+									color: "#00f0ff",
+									letterSpacing: "0.14em",
+								}}>
+								UPLOAD COMPLETE
+							</h2>
+							<p style={{ margin: "0.3rem 0 0", fontSize: "0.75rem", color: "#2e6070", letterSpacing: "0.05em" }}>
+								Image uploaded and captions generated.
+							</p>
+						</div>
+
+						{/* Uploaded image */}
 						{cdnUrl && (
-							<div style={{ marginBottom: "1.5rem", borderRadius: "12px", overflow: "hidden", border: "1px solid #2a2a4a" }}>
+							<div
+								style={{
+									marginBottom: "1.5rem",
+									borderRadius: "6px",
+									overflow: "hidden",
+									border: "1px solid rgba(0,240,255,0.2)",
+									boxShadow: "0 0 15px rgba(0,240,255,0.06)",
+								}}>
 								{/* eslint-disable-next-line @next/next/no-img-element */}
 								<img
 									src={cdnUrl}
 									alt="Uploaded meme"
-									style={{ width: "100%", maxHeight: "320px", objectFit: "contain", display: "block", background: "#0f0f23" }}
+									style={{ width: "100%", maxHeight: "300px", objectFit: "contain", display: "block", background: "#000810" }}
 								/>
 							</div>
 						)}
 
 						{/* Captions */}
-						<h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#4ecdc4", margin: "1.5rem 0 0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-							Generated Captions
+						<h2
+							style={{
+								fontSize: "0.78rem",
+								fontWeight: 700,
+								color: "#00f0ff",
+								margin: "0 0 0.75rem",
+								letterSpacing: "0.14em",
+							}}>
+							GENERATED CAPTIONS
 						</h2>
 						{captions.length === 0 ? (
-							<p style={{ color: "#8888aa" }}>No captions were generated.</p>
+							<p style={{ color: "#2e6070", letterSpacing: "0.06em", fontSize: "0.82rem" }}>
+								No captions were generated.
+							</p>
 						) : (
 							<ol style={{ margin: "0 0 1.5rem", padding: "0 0 0 1.25rem" }}>
 								{captions.map((c, i) => (
 									<li
 										key={c.id ?? i}
 										style={{
-											color: "#f0f0ff",
+											color: "#c0ecff",
 											marginBottom: "0.75rem",
-											lineHeight: 1.6,
-											fontSize: "0.95rem",
+											lineHeight: 1.65,
+											fontSize: "0.9rem",
 											paddingLeft: "0.25rem",
+											letterSpacing: "0.02em",
 										}}>
 										{c.content}
 									</li>
@@ -302,24 +308,31 @@ export default function UploadPage() {
 						)}
 
 						<button onClick={handleReset} style={primaryButtonStyle}>
-							Upload Another
+							UPLOAD ANOTHER
 						</button>
 					</div>
 				) : (
 					<>
-						<h2 style={{ margin: "0 0 1.25rem", fontSize: "1.1rem", fontWeight: 700, color: "#f0f0ff" }}>
-							Upload an Image
+						<h2
+							style={{
+								margin: "0 0 1.25rem",
+								fontSize: "0.88rem",
+								fontWeight: 700,
+								color: "#00f0ff",
+								letterSpacing: "0.12em",
+							}}>
+							UPLOAD AN IMAGE
 						</h2>
 
-						{/* File input zone */}
+						{/* Drop zone */}
 						<label style={dropZoneStyle}>
 							<div style={{ pointerEvents: "none", textAlign: "center" }}>
-								<div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🖼️</div>
-								<span style={{ color: "#c0c0e0", fontSize: "0.9rem", fontWeight: 500 }}>
-									{file ? file.name : "Click to select a file"}
+								<div style={{ fontSize: "1.8rem", marginBottom: "0.5rem" }}>🖼️</div>
+								<span style={{ color: "#c0ecff", fontSize: "0.85rem", fontWeight: 600, letterSpacing: "0.05em" }}>
+									{file ? file.name : "CLICK TO SELECT A FILE"}
 								</span>
-								<span style={{ display: "block", color: "#8888aa", fontSize: "0.78rem", marginTop: "0.3rem" }}>
-									JPEG · PNG · WebP · GIF · HEIC
+								<span style={{ display: "block", color: "#2e6070", fontSize: "0.72rem", marginTop: "0.3rem", letterSpacing: "0.06em" }}>
+									JPEG · PNG · WEBP · GIF · HEIC
 								</span>
 							</div>
 							<input
@@ -333,19 +346,36 @@ export default function UploadPage() {
 
 						{/* Preview */}
 						{preview && (
-							<div style={{ margin: "1rem 0", borderRadius: "12px", overflow: "hidden", border: "1px solid #2a2a4a" }}>
+							<div
+								style={{
+									margin: "1rem 0",
+									borderRadius: "6px",
+									overflow: "hidden",
+									border: "1px solid rgba(0,240,255,0.2)",
+									boxShadow: "0 0 12px rgba(0,240,255,0.06)",
+								}}>
 								{/* eslint-disable-next-line @next/next/no-img-element */}
 								<img
 									src={preview}
 									alt="Preview"
-									style={{ width: "100%", maxHeight: "280px", objectFit: "contain", display: "block", background: "#0f0f23" }}
+									style={{ width: "100%", maxHeight: "260px", objectFit: "contain", display: "block", background: "#000810" }}
 								/>
 							</div>
 						)}
 
 						{/* Error */}
 						{stage === "error" && errorMsg && (
-							<p style={{ color: "#ff6b6b", fontSize: "0.875rem", margin: "0.75rem 0", padding: "0.6rem 0.85rem", background: "rgba(255,107,107,0.08)", borderRadius: "8px", border: "1px solid rgba(255,107,107,0.25)" }}>
+							<p
+								style={{
+									color: "#ff6600",
+									fontSize: "0.82rem",
+									margin: "0.75rem 0",
+									padding: "0.6rem 0.85rem",
+									background: "rgba(255,102,0,0.06)",
+									borderRadius: "3px",
+									border: "1px solid rgba(255,102,0,0.25)",
+									letterSpacing: "0.04em",
+								}}>
 								{errorMsg}
 							</p>
 						)}
@@ -353,30 +383,48 @@ export default function UploadPage() {
 						{/* Progress */}
 						{isProcessing && (
 							<div style={{ margin: "1rem 0" }}>
-								<div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.5rem" }}>
-									<span style={{ color: "#4ecdc4", fontSize: "0.875rem", fontWeight: 600 }}>
+								<div style={{ marginBottom: "0.5rem" }}>
+									<span
+										style={{
+											color: "#00f0ff",
+											fontSize: "0.78rem",
+											fontWeight: 700,
+											letterSpacing: "0.1em",
+											textShadow: "0 0 6px rgba(0,240,255,0.5)",
+										}}>
 										{STAGE_LABELS[stage]}
 									</span>
 								</div>
-								{/* Indeterminate loading bar */}
-								<div style={{ width: "100%", height: "5px", background: "#2a2a4a", borderRadius: "999px", overflow: "hidden" }}>
-									<div style={{
-										height: "100%",
-										width: "35%",
-										background: "linear-gradient(90deg, transparent, #4ecdc4, #a8f0ec, #4ecdc4, transparent)",
-										borderRadius: "999px",
-										animation: "loadingSweep 1.5s ease-in-out infinite",
-									}} />
+								{/* Tron progress bar */}
+								<div
+									style={{
+										width: "100%",
+										height: "4px",
+										background: "rgba(0,240,255,0.1)",
+										borderRadius: "2px",
+										overflow: "hidden",
+										border: "1px solid rgba(0,240,255,0.15)",
+									}}>
+									<div
+										style={{
+											height: "100%",
+											width: "35%",
+											background: "linear-gradient(90deg, transparent, #00f0ff, rgba(0,240,255,0.5), #00f0ff, transparent)",
+											borderRadius: "2px",
+											animation: "loadingSweep 1.4s ease-in-out infinite",
+											boxShadow: "0 0 8px rgba(0,240,255,0.6)",
+										}}
+									/>
 								</div>
 								{stage === "captioning" && (
-									<p style={{ margin: "0.6rem 0 0", fontSize: "0.78rem", color: "#8888aa", lineHeight: 1.5 }}>
-										The AI is reading your image — this usually takes 15–30 seconds. Hang tight!
+									<p style={{ margin: "0.6rem 0 0", fontSize: "0.72rem", color: "#2e6070", lineHeight: 1.6, letterSpacing: "0.04em" }}>
+										The AI is reading your image — this usually takes 15–30 seconds.
 									</p>
 								)}
 							</div>
 						)}
 
-						{/* Submit button */}
+						{/* Submit */}
 						<button
 							onClick={handleUpload}
 							disabled={!file || isProcessing}
@@ -384,10 +432,10 @@ export default function UploadPage() {
 								...primaryButtonStyle,
 								width: "100%",
 								marginTop: "1rem",
-								opacity: !file || isProcessing ? 0.45 : 1,
+								opacity: !file || isProcessing ? 0.35 : 1,
 								cursor: !file || isProcessing ? "not-allowed" : "pointer",
 							}}>
-							{isProcessing ? STAGE_LABELS[stage] : "Generate Captions"}
+							{isProcessing ? STAGE_LABELS[stage] : "GENERATE CAPTIONS"}
 						</button>
 					</>
 				)}
@@ -398,8 +446,7 @@ export default function UploadPage() {
 
 const pageStyle: React.CSSProperties = {
 	minHeight: "100vh",
-	background: "#1a1a2e",
-	fontFamily: "system-ui, sans-serif",
+	fontFamily: "inherit",
 	display: "flex",
 	flexDirection: "column",
 	alignItems: "center",
@@ -409,7 +456,7 @@ const pageStyle: React.CSSProperties = {
 
 const heroStyle: React.CSSProperties = {
 	width: "100%",
-	maxWidth: "560px",
+	maxWidth: "540px",
 	textAlign: "center",
 	marginBottom: "2rem",
 	padding: "0 1rem",
@@ -418,7 +465,7 @@ const heroStyle: React.CSSProperties = {
 const stepsRowStyle: React.CSSProperties = {
 	display: "flex",
 	justifyContent: "center",
-	gap: "0.75rem",
+	gap: "0.6rem",
 	marginTop: "1.25rem",
 	flexWrap: "wrap",
 };
@@ -427,33 +474,35 @@ const stepPillStyle: React.CSSProperties = {
 	display: "flex",
 	alignItems: "center",
 	gap: "0.5rem",
-	background: "#16213e",
-	border: "1px solid #2a2a4a",
-	borderRadius: "999px",
-	padding: "0.35rem 0.9rem",
+	background: "#000f1e",
+	border: "1px solid rgba(0, 240, 255, 0.2)",
+	borderRadius: "2px",
+	padding: "0.3rem 0.85rem",
 };
 
 const stepNumStyle: React.CSSProperties = {
-	width: "20px",
-	height: "20px",
+	width: "18px",
+	height: "18px",
 	borderRadius: "50%",
-	background: "#4ecdc4",
-	color: "#0f0f23",
-	fontSize: "0.72rem",
+	background: "#00f0ff",
+	color: "#000810",
+	fontSize: "0.68rem",
 	fontWeight: 700,
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "center",
+	boxShadow: "0 0 6px rgba(0,240,255,0.5)",
 };
 
 const cardStyle: React.CSSProperties = {
 	width: "100%",
-	maxWidth: "520px",
-	background: "#16213e",
-	borderRadius: "16px",
-	border: "1px solid #2a2a4a",
+	maxWidth: "500px",
+	background: "#000f1e",
+	borderRadius: "6px",
+	border: "1px solid rgba(0, 240, 255, 0.25)",
 	padding: "2rem",
-	boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+	boxShadow: "0 0 40px rgba(0,240,255,0.07), inset 0 0 20px rgba(0,240,255,0.02)",
+	animation: "glowPulse 5s ease-in-out infinite",
 };
 
 const dropZoneStyle: React.CSSProperties = {
@@ -463,40 +512,26 @@ const dropZoneStyle: React.CSSProperties = {
 	justifyContent: "center",
 	width: "100%",
 	minHeight: "120px",
-	border: "2px dashed #3a3a5a",
-	borderRadius: "12px",
-	background: "#0f0f23",
+	border: "1px dashed rgba(0, 240, 255, 0.3)",
+	borderRadius: "6px",
+	background: "#000810",
 	cursor: "pointer",
-	transition: "border-color 0.2s",
 	boxSizing: "border-box",
-};
-
-const cdnBoxStyle: React.CSSProperties = {
-	background: "#0f0f23",
-	border: "1px solid #2a2a4a",
-	borderRadius: "10px",
-	padding: "0.85rem 1rem",
-};
-
-const copyButtonStyle: React.CSSProperties = {
-	padding: "0.25rem 0.7rem",
-	fontSize: "0.75rem",
-	fontWeight: 600,
-	color: "#0f0f23",
-	background: "#4ecdc4",
-	border: "none",
-	borderRadius: "5px",
-	cursor: "pointer",
+	transition: "border-color 0.2s",
 };
 
 const primaryButtonStyle: React.CSSProperties = {
 	padding: "0.7rem 1.5rem",
-	fontSize: "0.95rem",
+	fontSize: "0.85rem",
 	fontWeight: 700,
-	color: "#0f0f23",
-	background: "#4ecdc4",
+	letterSpacing: "0.1em",
+	color: "#000810",
+	background: "#00f0ff",
 	border: "none",
-	borderRadius: "8px",
+	borderRadius: "4px",
 	cursor: "pointer",
+	fontFamily: "inherit",
+	boxShadow: "0 0 16px rgba(0,240,255,0.4)",
+	animation: "glowPulse 3s ease-in-out infinite",
 	transition: "opacity 0.2s",
 };

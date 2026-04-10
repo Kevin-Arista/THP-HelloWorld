@@ -12,9 +12,7 @@ function LoginForm() {
 		const supabase = createClient();
 		await supabase.auth.signInWithOAuth({
 			provider: "google",
-			options: {
-				redirectTo: `${window.location.origin}/auth/callback`,
-			},
+			options: { redirectTo: `${window.location.origin}/auth/callback` },
 		});
 	}
 
@@ -26,49 +24,98 @@ function LoginForm() {
 				alignItems: "center",
 				justifyContent: "center",
 				minHeight: "calc(100vh - 56px)",
-				fontFamily: "system-ui, sans-serif",
+				fontFamily: "inherit",
+				padding: "2rem",
 			}}>
-			<h1
+			{/* Panel */}
+			<div
 				style={{
-					marginBottom: "0.5rem",
-					fontSize: "2.5rem",
-					fontWeight: 800,
-					color: "#f0f0ff",
-					textShadow:
-						"0 0 7px rgba(78,205,196,0.6), 0 0 30px rgba(78,205,196,0.3)",
+					width: "100%",
+					maxWidth: "360px",
+					background: "#000f1e",
+					border: "1px solid rgba(0, 240, 255, 0.28)",
+					borderRadius: "6px",
+					padding: "2.5rem 2rem",
+					boxShadow: "0 0 40px rgba(0,240,255,0.08), inset 0 0 20px rgba(0,240,255,0.02)",
+					animation: "glowPulse 4s ease-in-out infinite",
+					display: "flex",
+					flexDirection: "column",
+					alignItems: "center",
+					gap: "0.5rem",
 				}}>
-				MemeVote
-			</h1>
-			<p
-				style={{
-					marginBottom: "2rem",
-					fontSize: "1rem",
-					color: "#8888aa",
-				}}>
-				Welcome — sign in to get started
-			</p>
+				{/* Title */}
+				<h1
+					style={{
+						fontSize: "2rem",
+						fontWeight: 800,
+						color: "#00f0ff",
+						letterSpacing: "0.2em",
+						marginBottom: "0.25rem",
+						animation: "neonFlicker 9s ease-in-out infinite, textGlowPulse 4s ease-in-out infinite",
+					}}>
+					MEMEVOTE
+				</h1>
 
-			{error && (
-				<p style={{ color: "#ff6b6b", marginBottom: "1rem" }}>
-					Authentication failed. Please try again.
+				<div
+					style={{
+						width: "60px",
+						height: "1px",
+						background: "rgba(0,240,255,0.3)",
+						marginBottom: "0.5rem",
+						boxShadow: "0 0 6px rgba(0,240,255,0.4)",
+					}}
+				/>
+
+				<p
+					style={{
+						fontSize: "0.78rem",
+						color: "#2e6070",
+						letterSpacing: "0.12em",
+						textAlign: "center",
+						marginBottom: "1.5rem",
+					}}>
+					AUTHENTICATE TO ENTER THE GRID
 				</p>
-			)}
 
-			<button
-				onClick={handleSignIn}
-				style={{
-					padding: "0.75rem 1.5rem",
-					fontSize: "1rem",
-					backgroundColor: "#4285F4",
-					color: "#fff",
-					border: "none",
-					borderRadius: "8px",
-					cursor: "pointer",
-					boxShadow: "0 0 15px rgba(66,133,244,0.3)",
-					transition: "box-shadow 0.2s",
-				}}>
-				Sign in with Google
-			</button>
+				{error && (
+					<p
+						style={{
+							color: "#ff6600",
+							fontSize: "0.78rem",
+							letterSpacing: "0.06em",
+							marginBottom: "1rem",
+							padding: "0.5rem 0.75rem",
+							background: "rgba(255,102,0,0.06)",
+							border: "1px solid rgba(255,102,0,0.25)",
+							borderRadius: "3px",
+							width: "100%",
+							textAlign: "center",
+						}}>
+						AUTHENTICATION FAILED. TRY AGAIN.
+					</p>
+				)}
+
+				<button
+					onClick={handleSignIn}
+					style={{
+						width: "100%",
+						padding: "0.85rem 1.5rem",
+						fontSize: "0.9rem",
+						fontWeight: 700,
+						letterSpacing: "0.1em",
+						background: "#00f0ff",
+						color: "#000810",
+						border: "none",
+						borderRadius: "4px",
+						cursor: "pointer",
+						fontFamily: "inherit",
+						boxShadow: "0 0 20px rgba(0,240,255,0.45), 0 0 50px rgba(0,240,255,0.15)",
+						animation: "glowPulse 3s ease-in-out infinite",
+						transition: "opacity 0.2s",
+					}}>
+					SIGN IN WITH GOOGLE
+				</button>
+			</div>
 		</main>
 	);
 }

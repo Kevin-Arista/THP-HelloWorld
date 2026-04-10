@@ -1,20 +1,33 @@
+/* ─── Tron Theme Variables ────────────────────────────────── */
 :root {
-  --background: #1a1a2e;
-  --foreground: #f0f0ff;
+  --t-blue:        #00f0ff;
+  --t-blue-dim:    rgba(0, 240, 255, 0.15);
+  --t-blue-faint:  rgba(0, 240, 255, 0.055);
+  --t-bg:          #000810;
+  --t-card:        #000f1e;
+  --t-border:      rgba(0, 240, 255, 0.25);
+  --t-border-hi:   rgba(0, 240, 255, 0.65);
+  --t-text:        #c0ecff;
+  --t-muted:       #2e6070;
+  --t-orange:      #ff6600;
+  --background:    #000810;
+  --foreground:    #c0ecff;
 }
 
-html,
-body {
+/* ─── Base ────────────────────────────────────────────────── */
+html, body {
   max-width: 100vw;
   overflow-x: hidden;
+  color-scheme: dark;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--t-text);
+  background: var(--t-bg);
+  font-family: var(--font-geist-mono), 'Courier New', Courier, monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
 * {
@@ -28,6 +41,115 @@ a {
   text-decoration: none;
 }
 
-html {
-  color-scheme: dark;
+/* ─── Tron Grid Background ────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--t-blue-faint) 1px, transparent 1px),
+    linear-gradient(90deg, var(--t-blue-faint) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: gridDrift 22s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ─── CRT Scanline Overlay ────────────────────────────────── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.055) 2px,
+    rgba(0, 0, 0, 0.055) 3px
+  );
+  pointer-events: none;
+  z-index: 9997;
+}
+
+/* ─── Keyframes ───────────────────────────────────────────── */
+
+/* Grid drifts upward — the Tron ground-plane feel */
+@keyframes gridDrift {
+  from { background-position: 0 0,    0 0; }
+  to   { background-position: 0 60px, 0 0; }
+}
+
+/* Horizontal beam that sweeps the full viewport height */
+@keyframes scanBeam {
+  0%   { top: -2px;  opacity: 0;   }
+  4%   { opacity: 1;              }
+  96%  { opacity: 0.7;            }
+  100% { top: 100vh; opacity: 0;  }
+}
+
+/* Border + box-shadow glow cycle (blue) */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow:
+      0 0  6px rgba(0, 240, 255, 0.22),
+      0 0 22px rgba(0, 240, 255, 0.07);
+    border-color: rgba(0, 240, 255, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 14px rgba(0, 240, 255, 0.55),
+      0 0 45px rgba(0, 240, 255, 0.22),
+      0 0 90px rgba(0, 240, 255, 0.07);
+    border-color: rgba(0, 240, 255, 0.65);
+  }
+}
+
+/* Border glow cycle (orange) — used for downvote button */
+@keyframes orangeGlowPulse {
+  0%, 100% {
+    box-shadow:
+      0 0  6px rgba(255, 102, 0, 0.22),
+      0 0 22px rgba(255, 102, 0, 0.07);
+    border-color: rgba(255, 102, 0, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 14px rgba(255, 102, 0, 0.55),
+      0 0 45px rgba(255, 102, 0, 0.22);
+    border-color: rgba(255, 102, 0, 0.65);
+  }
+}
+
+/* Text glow pulse */
+@keyframes textGlowPulse {
+  0%, 100% {
+    text-shadow:
+      0 0  7px rgba(0, 240, 255, 0.55),
+      0 0 25px rgba(0, 240, 255, 0.22);
+  }
+  50% {
+    text-shadow:
+      0 0 14px rgba(0, 240, 255, 0.90),
+      0 0 45px rgba(0, 240, 255, 0.45),
+      0 0 90px rgba(0, 240, 255, 0.18);
+  }
+}
+
+/* Neon flicker — logo / hero headline */
+@keyframes neonFlicker {
+  0%,  18%, 20%, 50%,  53%,  100% { opacity: 1;   }
+  19%                              { opacity: 0.82; }
+  51%, 52%                         { opacity: 0.78; }
+}
+
+/* Upload progress sweep */
+@keyframes loadingSweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(550%); }
+}
+
+/* Entrance animation for cards */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
